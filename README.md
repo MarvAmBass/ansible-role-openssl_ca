@@ -38,7 +38,7 @@ You can use several Variables to configure this role.
 
 ### Variables with predefined default value
 
-- `path` - (default: `./`) path to store the CA folder.
+- `path` - (default: `.`) path to store the CA folder.
 
 - `ca_days` - (default: `3650`) days the CA will be valid
 - `ca_bits` - (default: `4096`) bits for CA generation

@@ -1,6 +1,6 @@
 ---
 
-path: './'
+path: '.'
 
 ca_days: 3650
 ca_bits: 4096
