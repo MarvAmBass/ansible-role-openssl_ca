@@ -87,7 +87,7 @@ __MUST NOT__
    - openssl_ca
   vars:
    ca_name: "Test CA"
-   subject: "/C=US/ST=TX/L=Houston/O=My Test CA/OU=Infrastructe as Code Department"
+   subject: "/C=US/ST=TX/L=Houston/O=My Test CA/OU=Infrastructure as Code Department"
    certs:
       - cn: test
         sans:
