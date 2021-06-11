@@ -14,7 +14,7 @@ I recommend generating those on your (hopefully secured) localhost and transferi
     [...]
 ```
 
-This way you can maintain multiple CAs for multiple purposes: `mail-transfer`, `rsyslog central server` and even `openvpn` should work.
+This way you can maintain multiple CAs for multiple purposes: `mail-transfer`, `rsyslog central log system` and even `openvpn` should work.
 
 It has support for `subjectAltNames` and `extendedKeyUsage` customisations.
 
