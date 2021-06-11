@@ -14,7 +14,7 @@
 
 - name: "generate {{ ca_name }} CA Key" 
   ansible.builtin.shell: |
-    mkdir -p "{{ path }}/{{ ca_name }}/ca";
+    mkdir -p "{{ path }}/{{ ca_name }}/_ca";
     openssl genrsa -out "{{ path }}/{{ ca_name }}/_ca/rootCA.key" {{ ca_bits }};
   args:
     executable: /bin/bash
