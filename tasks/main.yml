@@ -1,0 +1,106 @@
+---
+
+- name: check if required variable is set - 'ca_name'
+  ansible.builtin.fail: 
+    msg: "Bailing out - this play requires 'ca_name'"
+  when: ca_name is not defined
+
+
+- name: check if optional variable is set - 'subject'
+  ansible.builtin.debug:
+    msg: "optinally you can specify the 'subject' for this CA like: '/C=US/ST=TX/L=Houston/O=My Example Org''"
+  when: subject is not defined
+
+
+- name: "generate {{ ca_name }} CA Key" 
+  ansible.builtin.shell: |
+    mkdir -p "{{ path }}/{{ ca_name }}/ca"
+    openssl genrsa -out "{{ path }}/{{ ca_name }}/_ca/rootCA.key" {{ ca_bits }};
+  args:
+    executable: /bin/bash
+    creates: "{{ path }}/{{ ca_name }}/_ca/rootCA.key"
+
+- name: create and selfsign CA cert 
+  ansible.builtin.shell: |
+    cp /etc/ssl/openssl.cnf "{{ path }}/{{ ca_name }}/_ca/openssl.cnf";
+    printf "\n[ v3_ca ]\nbasicConstraints = critical,CA:TRUE\nsubjectKeyIdentifier = hash\nauthorityKeyIdentifier = keyid:always,issuer:always\n" >> "{{ path }}/{{ ca_name }}/_ca/openssl.cnf";
+
+    openssl req -x509 -new -nodes \
+      -config "{{ path }}/{{ ca_name }}/_ca/openssl.cnf" \
+      -extensions v3_ca \
+      -sha256 -days {{ ca_days }} \
+      -key "{{ path }}/{{ ca_name }}/_ca/rootCA.key" \
+      -subj "{{ subject }}/CN={{ ca_name }}" \
+      -out "{{ path }}/{{ ca_name }}/_ca/rootCA.crt";
+
+    openssl x509 -text -noout -in "{{ path }}/{{ ca_name }}/_ca/rootCA.crt";
+  args:
+    executable: /bin/bash
+    creates: "{{ path }}/{{ ca_name }}/_ca/rootCA.crt"
+
+- name: create and sign server cert
+  loop: "{{  certs  }}"
+  ansible.builtin.shell: |
+      mkdir -p "{{ path }}/{{ ca_name }}/{{ item.cn }}"
+
+      [ ! -f "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.key" ] \
+      && openssl genrsa -out "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.key" {{ cert_bits }};
+      
+      export DN=$(echo "{{ subject | default(omit) }}" | grep -v 'omit_place_holder' | sed 's/=/ = /g' | tr '/' '\n')
+
+      export IPS=$(echo "{{ item.ips | default(omit) | join(',') }}" | grep -v 'o,m,i,t,_,p,l,a,c,e,_,h,o,l,d,e,r' | tr ',' '\n' | cat -n | sed 's/^[^0-9]*/IP./g' | sed 's/\t/ = /g' | grep . );
+      export SANS=$(printf "{{ item.cn }}\n{{ item.sans | default(omit) | join(',') }}" | grep -v 'o,m,i,t,_,p,l,a,c,e,_,h,o,l,d,e,r' | tr ',' '\n' | cat -n | sed 's/^[^0-9]*/DNS./g' | sed 's/\t/ = /g' | grep .);
+
+      export EXTENDED_KEY_USAGE=$(printf "{{ item.extendedKeyUsage | default(omit) }}\nserverAuth,clientAuth" | grep -v 'omit_place_holder' | head -n1)
+      echo "extendedKeyUsage = $EXTENDED_KEY_USAGE"
+
+      echo '[ req ]
+      default_bits = {{ cert_bits }}
+      prompt = no
+      default_md = sha256
+      req_extensions = req_ext
+      distinguished_name = dn
+
+      [ dn ]
+      '"$DN"'
+      CN = {{ item.cn }}
+
+      [ req_ext ]
+      subjectAltName = @alt_names
+
+      [ alt_names ]
+      '"$SANS"'
+      '"$IPS"'
+
+      [ v3_ext ]
+      authorityKeyIdentifier=keyid,issuer:always
+      basicConstraints=CA:FALSE
+      keyUsage=keyEncipherment,dataEncipherment
+      extendedKeyUsage='"$EXTENDED_KEY_USAGE"'
+      subjectAltName=@alt_names
+      ' >> "{{ path }}/{{ ca_name }}/{{ item.cn }}/csr.cnf";
+
+
+      [ ! -f "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.csr" ] \
+      && openssl req -new \
+        -key "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.key" \
+        -out "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.csr" \
+        -config "{{ path }}/{{ ca_name }}/{{ item.cn }}/csr.cnf"
+
+      openssl req -noout -text -in "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.csr";
+
+
+      openssl x509 -req -in "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.csr" \
+        -CA "{{ path }}/{{ ca_name }}/_ca/rootCA.crt" \
+        -CAkey "{{ path }}/{{ ca_name }}/_ca/rootCA.key" \
+        -CAserial "{{ path }}/{{ ca_name }}/{{ item.cn }}/serial" \
+        -CAcreateserial \
+        -out "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.crt" \
+        -days {{ cert_days }} \
+        -extensions v3_ext \
+        -extfile "{{ path }}/{{ ca_name }}/{{ item.cn }}/csr.cnf"
+
+      openssl x509 -text -noout -in "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.crt";
+  args:
+    executable: /bin/bash
+    creates: "{{ path }}/{{ ca_name }}/{{ item.cn }}/{{ item.cn }}.crt"

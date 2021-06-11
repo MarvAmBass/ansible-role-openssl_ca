@@ -1,0 +1,9 @@
+---
+
+path: './'
+
+ca_days: 3650
+ca_bits: 4096
+
+cert_days: 1825
+cert_bits: 4096
