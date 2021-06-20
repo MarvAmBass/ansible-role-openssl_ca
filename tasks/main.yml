@@ -51,10 +51,14 @@
       export IPS=$(echo "{{ item.ips | default(omit) | join(',') }}" | grep -v 'o,m,i,t,_,p,l,a,c,e,_,h,o,l,d,e,r' | tr ',' '\n' | cat -n | sed 's/^[^0-9]*/IP./g' | sed 's/\t/ = /g' | grep . );
       export SANS=$(printf "{{ item.cn }}\n{{ item.sans | default(omit) | join(',') }}" | grep -v 'o,m,i,t,_,p,l,a,c,e,_,h,o,l,d,e,r' | tr ',' '\n' | cat -n | sed 's/^[^0-9]*/DNS./g' | sed 's/\t/ = /g' | grep .);
 
+      export KEY_USAGE=$(printf "keyUsage={{ item.keyUsage | default(omit) }}" | grep -v 'omit_place_holder' );
+      echo "$KEY_USAGE";
+
       export EXTENDED_KEY_USAGE=$(printf "{{ item.extendedKeyUsage | default(omit) }}\nserverAuth,clientAuth" | grep -v 'omit_place_holder' | head -n1);
       echo "extendedKeyUsage = $EXTENDED_KEY_USAGE";
 
-      echo '[ req ]
+      [ ! -f "{{ path }}/{{ ca_name }}/{{ item.cn }}/csr.cnf" ] \
+      && echo '[ req ]
       default_bits = {{ cert_bits }}
       prompt = no
       default_md = sha256
@@ -75,7 +79,7 @@
       [ v3_ext ]
       authorityKeyIdentifier=keyid,issuer:always
       basicConstraints=CA:FALSE
-      keyUsage=keyEncipherment,dataEncipherment
+      '"$KEY_USAGE"'
       extendedKeyUsage='"$EXTENDED_KEY_USAGE"'
       subjectAltName=@alt_names
       ' >> "{{ path }}/{{ ca_name }}/{{ item.cn }}/csr.cnf";

@@ -72,6 +72,7 @@ __MUST NOT__
 ```
 
 - `cn` - __required__ common name for certificate
+- `keyUsage` - _optional_ (default: _not set_) can be any `keyUsage`-option or a comma seperated list
 - `extendedKeyUsage` - _optional_ (default: `serverAuth,clientAuth`) can be any `extendedKeyUsage`-option or a comma seperated list
 - `sans`- _optional_ array of alternative DNS names
 - `ips`- _optional_ array of alternative IP-Addresses
