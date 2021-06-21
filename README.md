@@ -114,3 +114,26 @@ __MUST NOT__
         - 127.0.10.1
         - 10.0.10.1
 ```
+
+## Example OpenVPN Playbook
+
+```
+- name: create OpenVPN-CA with certificates locally
+  hosts: 127.0.0.1
+  connection: local
+  roles:
+   - base/openssl_ca
+  vars:
+   ca_name: "vpn-ca"
+   subject: "/C=US/ST=TX/L=Houston/O=My Test CA/OU=VPN"
+   certs:
+      - cn: server.system.tld
+        sans:
+        - server1.system.tld
+        - server-backup.system.tld
+        keyUsage: critical,nonRepudiation,digitalSignature,keyEncipherment,keyAgreement 
+        extendedKeyUsage: critical,serverAuth
+      - cn: client1.ppl.system.tld
+        keyUsage: critical,nonRepudiation,digitalSignature,keyEncipherment
+        extendedKeyUsage: critical,clientAuth
+```
